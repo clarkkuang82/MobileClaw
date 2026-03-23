@@ -49,7 +49,8 @@ final class MCCoreIntegrationTests: XCTestCase {
         let decoded = try JSONDecoder().decode([ContentBlock].self, from: data)
         XCTAssertEqual(decoded.count, 4)
         XCTAssertEqual(decoded[0].textValue, "Hello")
-        XCTAssertEqual(decoded[3].textValue, "Let me think...")
+        XCTAssertNil(decoded[3].textValue) // thinking blocks don't return textValue
+        XCTAssertEqual(decoded[3].thinkingValue, "Let me think...")
     }
 
     func testToolDefinitionUniqueID() {

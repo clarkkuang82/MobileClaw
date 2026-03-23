@@ -10,21 +10,23 @@ public struct SequentialStrategy: OrchestrationStrategy {
     ) -> AsyncThrowingStream<AgentEvent, Error> {
         AsyncThrowingStream { continuation in
             Task {
-                var currentInput = task
-
-                for agent in agents {
-                    var agentResult = ""
-                    for try await event in agent.run(task: currentInput) {
-                        continuation.yield(event)
-                        if case .completed(_, let result) = event {
-                            agentResult = result
+                do {
+                    var currentInput = task
+                    for agent in agents {
+                        var agentResult = ""
+                        for try await event in agent.run(task: currentInput) {
+                            continuation.yield(event)
+                            if case .completed(_, let result) = event {
+                                agentResult = result
+                            }
                         }
+                        await messageBus.publish(from: agent.config.id, message: agentResult)
+                        currentInput = agentResult
                     }
-                    await messageBus.publish(from: agent.config.id, message: agentResult)
-                    currentInput = agentResult
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error)
                 }
-
-                continuation.finish()
             }
         }
     }

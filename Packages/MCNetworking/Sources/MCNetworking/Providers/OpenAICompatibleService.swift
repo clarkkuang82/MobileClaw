@@ -170,9 +170,8 @@ public final class OpenAICompatibleService: LLMService, @unchecked Sendable {
                 }
             case .assistant:
                 var assistantMsg: [String: Any] = ["role": "assistant"]
-                if !msg.textContent.isEmpty {
-                    assistantMsg["content"] = msg.textContent
-                }
+                let text = msg.textContent
+                assistantMsg["content"] = text.isEmpty ? NSNull() : text
                 let toolUseCalls = msg.toolUseCalls
                 if !toolUseCalls.isEmpty {
                     assistantMsg["tool_calls"] = toolUseCalls.map { tc -> [String: Any] in

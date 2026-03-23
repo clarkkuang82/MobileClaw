@@ -40,10 +40,9 @@ public enum AgentEvent: Sendable {
     case error(agentID: String, error: String)
 }
 
-public final class AgentRuntime: @unchecked Sendable {
+public final class AgentRuntime: Sendable {
     public let config: AgentConfig
     private let service: any LLMService
-    private var messages: [ChatMessage] = []
 
     public init(config: AgentConfig) {
         self.config = config
@@ -55,8 +54,8 @@ public final class AgentRuntime: @unchecked Sendable {
             Task {
                 do {
                     continuation.yield(.started(agentID: config.id))
-                    messages = [.user(task)]
-
+                    // Local messages array - no shared mutable state
+                    var messages: [ChatMessage] = [.user(task)]
                     var iteration = 0
                     var finalResult = ""
 
@@ -93,15 +92,14 @@ public final class AgentRuntime: @unchecked Sendable {
                                     result: result.content
                                 ))
 
-                                let toolResultMsg = ChatMessage(
+                                messages.append(ChatMessage(
                                     role: .user,
                                     content: [.toolResult(ToolResultContent(
                                         toolUseId: toolUse.id,
                                         content: result.content,
                                         isError: result.isError
                                     ))]
-                                )
-                                messages.append(toolResultMsg)
+                                ))
                             }
                         } else {
                             finalResult = response.textContent

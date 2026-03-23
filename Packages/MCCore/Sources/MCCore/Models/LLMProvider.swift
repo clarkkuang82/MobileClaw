@@ -26,7 +26,7 @@ public enum LLMProvider: String, Codable, CaseIterable, Sendable, Identifiable {
         case .anthropic:
             URL(string: "https://api.anthropic.com")!
         case .openAI:
-            URL(string: "https://api.openai.com")!
+            URL(string: "https://api.openai.com/v1")!
         case .deepSeek:
             URL(string: "https://api.deepseek.com")!
         case .qwen:

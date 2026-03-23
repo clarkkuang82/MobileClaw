@@ -2,6 +2,7 @@ import SwiftUI
 import Foundation
 
 @Observable
+@MainActor
 final class NavigationRouter {
     var selectedTab: Tab = .chat
     var selectedConversationID: UUID?

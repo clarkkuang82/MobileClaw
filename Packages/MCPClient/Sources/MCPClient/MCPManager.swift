@@ -42,10 +42,13 @@ public actor MCPManager {
         return try await connection.callTool(name: name, argumentsJSON: argumentsJSON)
     }
 
-    public func connectedServers() -> [(id: String, name: String)] {
-        connections.map { ($0.key, $0.value) }.map { (id, conn) in
-            (id: id, name: "")  // Name accessed asynchronously
+    public func connectedServers() async -> [(id: String, name: String)] {
+        var result: [(id: String, name: String)] = []
+        for (id, connection) in connections {
+            let name = await connection.name
+            result.append((id: id, name: name))
         }
+        return result
     }
 
     public func serverCount() -> Int {
@@ -53,8 +56,9 @@ public actor MCPManager {
     }
 
     public func disconnectAll() async {
-        for (_, connection) in connections {
+        for (id, connection) in connections {
             await connection.disconnect()
+            await toolRegistry.unregister(serverID: id)
         }
         connections.removeAll()
     }

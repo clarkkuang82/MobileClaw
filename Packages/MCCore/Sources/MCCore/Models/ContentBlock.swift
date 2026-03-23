@@ -8,11 +8,13 @@ public enum ContentBlock: Codable, Sendable, Hashable {
     case thinking(String)
 
     public var textValue: String? {
-        switch self {
-        case .text(let text): text
-        case .thinking(let text): text
-        default: nil
-        }
+        if case .text(let text) = self { return text }
+        return nil
+    }
+
+    public var thinkingValue: String? {
+        if case .thinking(let text) = self { return text }
+        return nil
     }
 }
 

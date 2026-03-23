@@ -1,9 +1,8 @@
 import Foundation
 import MCCore
 
-public final class AgentOrchestrator: @unchecked Sendable {
+public final class AgentOrchestrator: Sendable {
     public static let shared = AgentOrchestrator()
-    private let messageBus = AgentMessageBus()
 
     private init() {}
 
@@ -12,7 +11,9 @@ public final class AgentOrchestrator: @unchecked Sendable {
         agents: [AgentRuntime],
         strategy: any OrchestrationStrategy
     ) -> AsyncThrowingStream<AgentEvent, Error> {
-        strategy.execute(task: task, agents: agents, messageBus: messageBus)
+        // Create a fresh message bus per invocation to prevent cross-contamination
+        let messageBus = AgentMessageBus()
+        return strategy.execute(task: task, agents: agents, messageBus: messageBus)
     }
 
     public func runSequential(task: String, agents: [AgentRuntime]) -> AsyncThrowingStream<AgentEvent, Error> {

@@ -3,7 +3,7 @@ import MCCore
 import MCNetworking
 
 struct ServiceKey: EnvironmentKey {
-    static let defaultValue: LLMServiceProvider = LLMServiceProvider()
+    @MainActor static let defaultValue: LLMServiceProvider = LLMServiceProvider()
 }
 
 extension EnvironmentValues {
@@ -14,6 +14,7 @@ extension EnvironmentValues {
 }
 
 @Observable
+@MainActor
 final class LLMServiceProvider {
     var currentProvider: LLMProvider = .anthropic
     var currentModel: LLMModel = .claudeSonnet

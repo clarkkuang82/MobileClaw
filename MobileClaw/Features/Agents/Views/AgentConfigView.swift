@@ -37,6 +37,9 @@ struct AgentConfigView: View {
                             Text(model.name).tag(model.id)
                         }
                     }
+                    .onChange(of: provider) { _, newProvider in
+                        modelID = LLMModel.defaultModels(for: newProvider).first?.id ?? ""
+                    }
                 }
 
                 Section("Parameters") {

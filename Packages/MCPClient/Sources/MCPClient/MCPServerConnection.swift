@@ -13,6 +13,7 @@ public actor MCPServerConnection {
     private var pendingRequests: [String: CheckedContinuation<Any, Error>] = [:]
     private var requestID: Int = 0
     private var readBuffer = Data()
+    private var readTask: Task<Void, Never>?
 
     public init(id: String = UUID().uuidString, name: String, config: MCPServerConfig) {
         self.id = id
@@ -34,6 +35,8 @@ public actor MCPServerConnection {
     }
 
     public func disconnect() async {
+        readTask?.cancel()
+        readTask = nil
         #if os(macOS)
         process?.terminate()
         process = nil
@@ -42,7 +45,7 @@ public actor MCPServerConnection {
         outputPipe = nil
         isConnected = false
         discoveredTools = []
-        pendingRequests.removeAll()
+        failAllPendingRequests(error: MCError.mcpConnectionFailed(serverName: name, message: "Disconnected"))
     }
 
     public func listTools() async throws -> [ToolDefinition] {
@@ -115,34 +118,51 @@ public actor MCPServerConnection {
         self.inputPipe = inPipe
         self.outputPipe = outPipe
 
+        // Handle process termination
+        proc.terminationHandler = { [weak self] _ in
+            Task { [weak self] in
+                await self?.handleProcessTermination()
+            }
+        }
+
         try proc.run()
         isConnected = true
 
         // Start reading responses
-        Task { [weak self] in
-            guard let self else { return }
+        readTask = Task { [self] in
             let handle = outPipe.fileHandleForReading
-            for try await data in handle.bytes(forStream: outPipe) {
-                await self.handleIncomingData(data)
+            for await data in handle.bytes(forStream: outPipe) {
+                await self.handleIncomingByte(data)
             }
         }
 
         // Send initialize
         _ = try await sendRequest(method: "initialize", params: [
             "protocolVersion": "2024-11-05",
-            "capabilities": [:],
+            "capabilities": [:] as [String: Any],
             "clientInfo": ["name": "MobileClaw", "version": "1.0.0"],
         ] as [String: Any])
 
         // Send initialized notification
         sendNotification(method: "notifications/initialized", params: [:])
     }
+
+    private func handleProcessTermination() {
+        isConnected = false
+        failAllPendingRequests(error: MCError.mcpConnectionFailed(serverName: name, message: "Process terminated"))
+    }
     #endif
 
     private func connectSSE(url: URL) async throws {
-        // SSE transport - simplified for Phase 3
-        // Full implementation would use SSE for server→client and POST for client→server
         throw MCError.mcpConnectionFailed(serverName: name, message: "SSE transport coming soon")
+    }
+
+    private func failAllPendingRequests(error: Error) {
+        let pending = pendingRequests
+        pendingRequests.removeAll()
+        for (_, continuation) in pending {
+            continuation.resume(throwing: error)
+        }
     }
 
     private func sendRequest(method: String, params: [String: Any]) async throws -> Any {
@@ -155,18 +175,13 @@ public actor MCPServerConnection {
             "params": params,
         ]
 
-        let data = try JSONSerialization.data(withJSONObject: message)
-        guard let jsonString = String(data: data, encoding: .utf8) else {
-            throw MCError.mcpConnectionFailed(serverName: name, message: "Failed to encode request")
-        }
-
-        let header = "Content-Length: \(data.count)\r\n\r\n"
+        let bodyData = try JSONSerialization.data(withJSONObject: message)
+        let headerData = "Content-Length: \(bodyData.count)\r\n\r\n".data(using: .utf8)!
 
         return try await withCheckedThrowingContinuation { continuation in
             pendingRequests["\(id)"] = continuation
             if let pipe = inputPipe {
-                let fullMessage = header + jsonString
-                pipe.fileHandleForWriting.write(fullMessage.data(using: .utf8)!)
+                pipe.fileHandleForWriting.write(headerData + bodyData)
             } else {
                 continuation.resume(throwing: MCError.mcpConnectionFailed(serverName: name, message: "No pipe"))
                 pendingRequests.removeValue(forKey: "\(id)")
@@ -180,42 +195,55 @@ public actor MCPServerConnection {
             "method": method,
             "params": params,
         ]
-        guard let data = try? JSONSerialization.data(withJSONObject: message),
-              let jsonString = String(data: data, encoding: .utf8) else { return }
-        let header = "Content-Length: \(data.count)\r\n\r\n"
-        inputPipe?.fileHandleForWriting.write((header + jsonString).data(using: .utf8)!)
+        guard let bodyData = try? JSONSerialization.data(withJSONObject: message) else { return }
+        let headerData = "Content-Length: \(bodyData.count)\r\n\r\n".data(using: .utf8)!
+        inputPipe?.fileHandleForWriting.write(headerData + bodyData)
     }
 
-    private func handleIncomingData(_ byte: UInt8) {
+    // MARK: - Response parsing (byte-accurate)
+
+    private func handleIncomingByte(_ byte: UInt8) {
         readBuffer.append(byte)
+        tryParseMessages()
+    }
 
-        // Look for complete JSON-RPC messages (Content-Length header + body)
-        guard let str = String(data: readBuffer, encoding: .utf8),
-              let headerEnd = str.range(of: "\r\n\r\n") else { return }
+    private func tryParseMessages() {
+        // Look for "\r\n\r\n" separator between header and body
+        let separator = Data([0x0D, 0x0A, 0x0D, 0x0A]) // \r\n\r\n
+        guard let separatorRange = readBuffer.range(of: separator) else { return }
 
-        let header = String(str[str.startIndex..<headerEnd.lowerBound])
-        guard let lengthStr = header.components(separatedBy: "Content-Length: ").last,
-              let length = Int(lengthStr.trimmingCharacters(in: .whitespaces)) else { return }
+        let headerData = readBuffer[readBuffer.startIndex..<separatorRange.lowerBound]
+        guard let headerStr = String(data: headerData, encoding: .utf8),
+              let lengthStr = headerStr.components(separatedBy: "Content-Length: ").last,
+              let bodyLength = Int(lengthStr.trimmingCharacters(in: .whitespacesAndNewlines)) else { return }
 
-        let bodyStart = str[headerEnd.upperBound...]
-        guard bodyStart.utf8.count >= length else { return }
+        let bodyStart = separatorRange.upperBound
+        let available = readBuffer.count - bodyStart
+        guard available >= bodyLength else { return } // Wait for more bytes
 
-        let bodyStr = String(bodyStart.prefix(length))
-        readBuffer = Data(String(bodyStart.dropFirst(length)).utf8)
+        let bodyData = readBuffer[bodyStart..<(bodyStart + bodyLength)]
+        readBuffer = Data(readBuffer[(bodyStart + bodyLength)...])
 
         // Parse JSON-RPC response
-        guard let data = bodyStr.data(using: .utf8),
-              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return }
+        guard let json = try? JSONSerialization.jsonObject(with: bodyData) as? [String: Any] else { return }
 
-        if let id = json["id"], let idStr = "\(id)" as String? {
+        if let id = json["id"] {
+            let idStr = "\(id)"
             if let result = json["result"] {
                 pendingRequests[idStr]?.resume(returning: result)
             } else if let error = json["error"] as? [String: Any] {
                 let msg = error["message"] as? String ?? "Unknown MCP error"
                 pendingRequests[idStr]?.resume(throwing: MCError.toolCallFailed(toolName: "", message: msg))
+            } else {
+                // Malformed response - resume to avoid hanging
+                pendingRequests[idStr]?.resume(returning: [:] as [String: Any])
             }
             pendingRequests.removeValue(forKey: idStr)
         }
+        // Notifications (no id) are silently ignored
+
+        // Try parsing more messages in the buffer
+        tryParseMessages()
     }
 }
 
@@ -244,7 +272,6 @@ extension FileHandle {
 
 public struct MCPServerConfig: Codable, Sendable {
     public let transport: MCPTransport
-
     public init(transport: MCPTransport) {
         self.transport = transport
     }

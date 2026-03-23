@@ -72,7 +72,7 @@ struct MCPToolListView: View {
 
     private func refresh() {
         isLoading = true
-        Task {
+        Task { @MainActor in
             tools = await MCPManager.shared.availableTools()
             servers = await MCPManager.shared.connectedServers()
             isLoading = false
