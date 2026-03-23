@@ -18,9 +18,16 @@ struct AppSidebarView: View {
             case .chat:
                 ConversationListView(router: router)
             case .agents:
-                AgentPlaceholderView()
+                NavigationStack {
+                    AgentListView()
+                        .navigationDestination(for: UUID.self) { _ in
+                            AgentOrchestrationView()
+                        }
+                }
             case .tools:
-                ToolsPlaceholderView()
+                NavigationStack {
+                    MCPToolListView()
+                }
             case .settings:
                 SettingsView()
             }

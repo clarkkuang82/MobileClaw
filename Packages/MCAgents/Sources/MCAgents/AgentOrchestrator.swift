@@ -1,10 +1,34 @@
 import Foundation
 import MCCore
 
-/// Multi-agent orchestration engine.
-/// Full implementation coming in Phase 4.
 public final class AgentOrchestrator: @unchecked Sendable {
     public static let shared = AgentOrchestrator()
+    private let messageBus = AgentMessageBus()
 
     private init() {}
+
+    public func run(
+        task: String,
+        agents: [AgentRuntime],
+        strategy: any OrchestrationStrategy
+    ) -> AsyncThrowingStream<AgentEvent, Error> {
+        strategy.execute(task: task, agents: agents, messageBus: messageBus)
+    }
+
+    public func runSequential(task: String, agents: [AgentRuntime]) -> AsyncThrowingStream<AgentEvent, Error> {
+        run(task: task, agents: agents, strategy: SequentialStrategy())
+    }
+
+    public func runParallel(task: String, agents: [AgentRuntime]) -> AsyncThrowingStream<AgentEvent, Error> {
+        run(task: task, agents: agents, strategy: ParallelStrategy())
+    }
+
+    public func runSupervisor(
+        task: String,
+        supervisor: AgentConfig,
+        workers: [AgentRuntime]
+    ) -> AsyncThrowingStream<AgentEvent, Error> {
+        let strategy = SupervisorStrategy(supervisorConfig: supervisor)
+        return run(task: task, agents: workers, strategy: strategy)
+    }
 }

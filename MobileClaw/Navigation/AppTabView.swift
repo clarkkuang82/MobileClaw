@@ -6,13 +6,16 @@ struct AppTabView: View {
     var body: some View {
         TabView(selection: $router.selectedTab) {
             ConversationListView(router: router)
-            .tabItem {
-                Label(NavigationRouter.Tab.chat.title, systemImage: NavigationRouter.Tab.chat.icon)
-            }
-            .tag(NavigationRouter.Tab.chat)
+                .tabItem {
+                    Label(NavigationRouter.Tab.chat.title, systemImage: NavigationRouter.Tab.chat.icon)
+                }
+                .tag(NavigationRouter.Tab.chat)
 
             NavigationStack {
-                AgentPlaceholderView()
+                AgentListView()
+                    .navigationDestination(for: UUID.self) { _ in
+                        AgentOrchestrationView()
+                    }
             }
             .tabItem {
                 Label(NavigationRouter.Tab.agents.title, systemImage: NavigationRouter.Tab.agents.icon)
@@ -20,7 +23,7 @@ struct AppTabView: View {
             .tag(NavigationRouter.Tab.agents)
 
             NavigationStack {
-                ToolsPlaceholderView()
+                MCPToolListView()
             }
             .tabItem {
                 Label(NavigationRouter.Tab.tools.title, systemImage: NavigationRouter.Tab.tools.icon)
@@ -35,17 +38,5 @@ struct AppTabView: View {
             }
             .tag(NavigationRouter.Tab.settings)
         }
-    }
-}
-
-struct AgentPlaceholderView: View {
-    var body: some View {
-        ContentUnavailableView("Agents", systemImage: "person.3", description: Text("Multi-agent orchestration coming in Phase 4"))
-    }
-}
-
-struct ToolsPlaceholderView: View {
-    var body: some View {
-        ContentUnavailableView("MCP Tools", systemImage: "wrench.and.screwdriver", description: Text("MCP tool integration coming in Phase 3"))
     }
 }

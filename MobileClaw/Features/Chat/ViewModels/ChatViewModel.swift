@@ -3,6 +3,7 @@ import SwiftData
 import MCCore
 import MCNetworking
 import MCPersistence
+import MCPClient
 
 @Observable
 @MainActor
@@ -12,11 +13,14 @@ final class ChatViewModel {
     var thinkingText: String = ""
     var isStreaming: Bool = false
     var error: MCError?
+    var activeToolCall: String?
 
     private(set) var conversation: ConversationEntity?
     private var currentTask: Task<Void, Never>?
     private var repository: ConversationRepository?
     private var serviceProvider: LLMServiceProvider?
+
+    private let maxToolCallIterations = 10
 
     var currentProvider: LLMProvider {
         serviceProvider?.currentProvider ?? .anthropic
@@ -72,6 +76,7 @@ final class ChatViewModel {
         currentTask?.cancel()
         currentTask = nil
         isStreaming = false
+        activeToolCall = nil
 
         if !streamingText.isEmpty {
             let assistantMessage = ChatMessage.assistant(streamingText, modelID: currentModel.id)
@@ -87,86 +92,132 @@ final class ChatViewModel {
         isStreaming = true
         streamingText = ""
         thinkingText = ""
+        activeToolCall = nil
         error = nil
 
         let service = serviceProvider.service()
         let model = serviceProvider.currentModel
         let systemPrompt = conversation?.systemPrompt
-        let messagesToSend = messages
 
         currentTask = Task {
             do {
-                var toolCallID = ""
-                var toolCallName = ""
-                var toolCallArgs = ""
-                var hasToolUse = false
+                var iteration = 0
+                var shouldContinue = true
 
-                let stream = service.streamMessage(
-                    messages: messagesToSend,
-                    model: model,
-                    systemPrompt: systemPrompt,
-                    tools: nil,
-                    maxTokens: model.maxOutputTokens
-                )
+                while shouldContinue && iteration < maxToolCallIterations && !Task.isCancelled {
+                    iteration += 1
+                    shouldContinue = false
 
-                for try await event in stream {
-                    if Task.isCancelled { break }
+                    let tools = await MCPManager.shared.availableTools()
+                    let messagesToSend = messages
 
-                    switch event {
-                    case .contentBlockDelta(_, let delta):
-                        switch delta {
-                        case .text(let text):
-                            streamingText += text
-                        case .toolInput(let json):
-                            toolCallArgs += json
-                        case .thinking(let text):
-                            thinkingText += text
-                        }
+                    var pendingToolCalls: [(id: String, name: String, args: String)] = []
 
-                    case .contentBlockStart(_, let type):
-                        if case .toolUse(let id, let name) = type {
-                            toolCallID = id
-                            toolCallName = name
-                            toolCallArgs = ""
-                            hasToolUse = true
-                        }
-
-                    case .messageStop(let reason):
-                        if reason == .toolUse && hasToolUse {
-                            // Tool calling will be implemented in Phase 3
-                        }
-
-                    case .error(let mcError):
-                        self.error = mcError
-
-                    default:
-                        break
-                    }
-                }
-
-                if !streamingText.isEmpty || !self.thinkingText.isEmpty {
-                    var content: [ContentBlock] = []
-                    if !self.thinkingText.isEmpty {
-                        content.append(.thinking(self.thinkingText))
-                    }
-                    if !streamingText.isEmpty {
-                        content.append(.text(streamingText))
-                    }
-                    let assistantMessage = ChatMessage(
-                        role: .assistant, content: content, modelID: model.id
+                    let stream = service.streamMessage(
+                        messages: messagesToSend,
+                        model: model,
+                        systemPrompt: systemPrompt,
+                        tools: tools.isEmpty ? nil : tools,
+                        maxTokens: model.maxOutputTokens
                     )
-                    messages.append(assistantMessage)
-                    persistMessage(assistantMessage)
+
+                    streamingText = ""
+                    thinkingText = ""
+
+                    for try await event in stream {
+                        if Task.isCancelled { break }
+
+                        switch event {
+                        case .contentBlockDelta(_, let delta):
+                            switch delta {
+                            case .text(let text):
+                                streamingText += text
+                            case .toolInput(let json):
+                                if !pendingToolCalls.isEmpty {
+                                    pendingToolCalls[pendingToolCalls.count - 1].args += json
+                                }
+                            case .thinking(let text):
+                                thinkingText += text
+                            }
+
+                        case .contentBlockStart(_, let type):
+                            if case .toolUse(let id, let name) = type {
+                                pendingToolCalls.append((id: id, name: name, args: ""))
+                            }
+
+                        case .messageStop(let reason):
+                            if reason == .toolUse && !pendingToolCalls.isEmpty {
+                                shouldContinue = true
+                            }
+
+                        case .error(let mcError):
+                            self.error = mcError
+
+                        default:
+                            break
+                        }
+                    }
+
+                    // Build assistant message with text + tool calls
+                    if !streamingText.isEmpty || !thinkingText.isEmpty || !pendingToolCalls.isEmpty {
+                        var content: [ContentBlock] = []
+                        if !thinkingText.isEmpty {
+                            content.append(.thinking(thinkingText))
+                        }
+                        if !streamingText.isEmpty {
+                            content.append(.text(streamingText))
+                        }
+                        for tc in pendingToolCalls {
+                            content.append(.toolUse(ToolUseContent(id: tc.id, name: tc.name, argumentsJSON: tc.args)))
+                        }
+                        let assistantMessage = ChatMessage(role: .assistant, content: content, modelID: model.id)
+                        messages.append(assistantMessage)
+                        persistMessage(assistantMessage)
+                    }
+
+                    // Execute tool calls if any
+                    if shouldContinue && !pendingToolCalls.isEmpty {
+                        var toolResults: [ContentBlock] = []
+
+                        for tc in pendingToolCalls {
+                            activeToolCall = tc.name
+                            do {
+                                let result = try await MCPManager.shared.callTool(
+                                    name: tc.name,
+                                    argumentsJSON: tc.args
+                                )
+                                toolResults.append(.toolResult(ToolResultContent(
+                                    toolUseId: tc.id,
+                                    content: result.content,
+                                    isError: result.isError
+                                )))
+                            } catch {
+                                toolResults.append(.toolResult(ToolResultContent(
+                                    toolUseId: tc.id,
+                                    content: "Error: \(error.localizedDescription)",
+                                    isError: true
+                                )))
+                            }
+                        }
+
+                        // Add tool results as user message (Anthropic format)
+                        let toolResultMessage = ChatMessage(role: .user, content: toolResults)
+                        messages.append(toolResultMessage)
+                        persistMessage(toolResultMessage)
+                        activeToolCall = nil
+                    }
                 }
 
                 streamingText = ""
-                self.thinkingText = ""
+                thinkingText = ""
+                activeToolCall = nil
                 isStreaming = false
             } catch {
                 if !(error is CancellationError) {
                     self.error = .streamingError(error.localizedDescription)
                 }
                 isStreaming = false
+                activeToolCall = nil
             }
         }
     }
