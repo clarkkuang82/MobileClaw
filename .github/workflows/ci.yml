@@ -37,10 +37,11 @@ jobs:
             -destination 'platform=macOS' \
             -quiet
 
-      - name: Build iOS
+      - name: Build iOS (compile check)
         run: |
           xcodebuild build \
             -project MobileClaw.xcodeproj \
             -scheme MobileClaw-iOS \
-            -destination 'generic/platform=iOS Simulator' \
-            -quiet
+            -destination 'generic/platform=iOS' \
+            -quiet \
+            CODE_SIGNING_ALLOWED=NO
