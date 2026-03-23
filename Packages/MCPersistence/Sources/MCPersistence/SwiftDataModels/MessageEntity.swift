@@ -5,7 +5,7 @@ import Foundation
 public final class MessageEntity {
     public var id: UUID = UUID()
     public var role: String = "user"
-    public var contentJSON: Data?
+    public var contentJSON: String?
     public var createdAt: Date = Date()
     public var tokenCount: Int?
     public var modelID: String?
@@ -15,7 +15,7 @@ public final class MessageEntity {
 
     public init(
         role: String = "user",
-        contentJSON: Data? = nil,
+        contentJSON: String? = nil,
         modelID: String? = nil
     ) {
         self.id = UUID()

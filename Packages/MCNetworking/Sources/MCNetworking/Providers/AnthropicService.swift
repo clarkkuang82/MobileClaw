@@ -4,14 +4,16 @@ import MCCore
 public final class AnthropicService: LLMService, @unchecked Sendable {
     public let provider: LLMProvider = .anthropic
     private let apiKeyStore: APIKeyStore
-    private var currentTask: Task<Void, Never>?
-    private let session: URLSession
+    private let lock = NSLock()
+    private var _currentTask: Task<Void, Never>?
+
+    private var currentTask: Task<Void, Never>? {
+        get { lock.withLock { _currentTask } }
+        set { lock.withLock { _currentTask = newValue } }
+    }
 
     public init(apiKeyStore: APIKeyStore = .shared) {
         self.apiKeyStore = apiKeyStore
-        let config = URLSessionConfiguration.default
-        config.timeoutIntervalForRequest = 120
-        self.session = URLSession(configuration: config)
     }
 
     public func sendMessage(
@@ -22,7 +24,7 @@ public final class AnthropicService: LLMService, @unchecked Sendable {
         maxTokens: Int
     ) async throws -> ChatMessage {
         var fullText = ""
-        var toolCalls: [ToolUseContent] = []
+        var toolCalls: [(id: String, name: String, args: String)] = []
 
         for try await event in streamMessage(
             messages: messages,
@@ -33,12 +35,19 @@ public final class AnthropicService: LLMService, @unchecked Sendable {
         ) {
             switch event {
             case .contentBlockDelta(_, let delta):
-                if case .text(let text) = delta {
+                switch delta {
+                case .text(let text):
                     fullText += text
+                case .toolInput(let json):
+                    if !toolCalls.isEmpty {
+                        toolCalls[toolCalls.count - 1].args += json
+                    }
+                case .thinking:
+                    break
                 }
             case .contentBlockStart(_, let type):
                 if case .toolUse(let id, let name) = type {
-                    toolCalls.append(ToolUseContent(id: id, name: name, argumentsJSON: ""))
+                    toolCalls.append((id: id, name: name, args: ""))
                 }
             default:
                 break
@@ -49,8 +58,8 @@ public final class AnthropicService: LLMService, @unchecked Sendable {
         if !fullText.isEmpty {
             content.append(.text(fullText))
         }
-        for tool in toolCalls {
-            content.append(.toolUse(tool))
+        for tc in toolCalls {
+            content.append(.toolUse(ToolUseContent(id: tc.id, name: tc.name, argumentsJSON: tc.args)))
         }
 
         return ChatMessage(role: .assistant, content: content, modelID: model.id)
@@ -66,11 +75,11 @@ public final class AnthropicService: LLMService, @unchecked Sendable {
         AsyncThrowingStream { continuation in
             let task = Task {
                 do {
-                    guard let apiKey = apiKeyStore.apiKey(for: .anthropic) else {
+                    guard let apiKey = self.apiKeyStore.apiKey(for: .anthropic) else {
                         throw MCError.apiKeyMissing(.anthropic)
                     }
 
-                    let request = try buildRequest(
+                    let request = try self.buildRequest(
                         messages: messages,
                         model: model,
                         systemPrompt: systemPrompt,
@@ -79,10 +88,9 @@ public final class AnthropicService: LLMService, @unchecked Sendable {
                         apiKey: apiKey
                     )
 
-                    let sseClient = SSEClient()
-                    for try await sseEvent in await sseClient.stream(request: request) {
+                    for try await sseEvent in SSEClientFactory.stream(request: request) {
                         if Task.isCancelled { break }
-                        let events = parseSSEEvent(sseEvent)
+                        let events = self.parseSSEEvent(sseEvent)
                         for event in events {
                             continuation.yield(event)
                         }
@@ -92,6 +100,8 @@ public final class AnthropicService: LLMService, @unchecked Sendable {
                     continuation.finish(throwing: error)
                 }
             }
+
+            self.currentTask = task
 
             continuation.onTermination = { _ in
                 task.cancel()
@@ -126,6 +136,7 @@ public final class AnthropicService: LLMService, @unchecked Sendable {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
         request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
+        request.timeoutInterval = 120
 
         var body: [String: Any] = [
             "model": model.id,
@@ -137,7 +148,9 @@ public final class AnthropicService: LLMService, @unchecked Sendable {
             body["system"] = systemPrompt
         }
 
-        body["messages"] = messages.filter { $0.role != .system }.map { message in
+        // Filter out system messages (handled via system prompt) and build API messages
+        let apiMessages = messages.filter { $0.role != .system }
+        body["messages"] = apiMessages.map { message -> [String: Any] in
             var msg: [String: Any] = ["role": message.role.rawValue]
             var contentArray: [[String: Any]] = []
 
@@ -155,7 +168,7 @@ public final class AnthropicService: LLMService, @unchecked Sendable {
                         ],
                     ])
                 case .toolUse(let toolUse):
-                    var args: Any = [:]
+                    var args: Any = [String: Any]()
                     if let data = toolUse.argumentsJSON.data(using: .utf8),
                        let json = try? JSONSerialization.jsonObject(with: data) {
                         args = json
@@ -167,14 +180,15 @@ public final class AnthropicService: LLMService, @unchecked Sendable {
                         "input": args,
                     ])
                 case .toolResult(let result):
+                    // Anthropic requires tool_result in user messages
                     contentArray.append([
                         "type": "tool_result",
                         "tool_use_id": result.toolUseId,
                         "content": result.content,
-                        "is_error": result.isError,
                     ])
-                case .thinking(let text):
-                    contentArray.append(["type": "thinking", "thinking": text])
+                case .thinking:
+                    // Don't re-send thinking blocks to the API
+                    break
                 }
             }
 

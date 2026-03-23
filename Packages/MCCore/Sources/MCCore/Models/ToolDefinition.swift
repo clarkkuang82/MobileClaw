@@ -6,7 +6,7 @@ public struct ToolDefinition: Codable, Sendable, Identifiable, Hashable {
     public let inputSchemaJSON: String
     public var serverID: String?
 
-    public var id: String { name }
+    public var id: String { "\(serverID ?? "local")_\(name)" }
 
     public init(
         name: String,

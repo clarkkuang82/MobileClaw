@@ -9,26 +9,29 @@ struct ConversationListView: View {
     @Environment(\.serviceProvider) private var serviceProvider
     @Query(sort: \ConversationEntity.updatedAt, order: .reverse)
     private var conversations: [ConversationEntity]
+    @State private var navigationPath = NavigationPath()
 
     var body: some View {
-        Group {
-            if conversations.isEmpty {
-                emptyState
-            } else {
-                conversationList
-            }
-        }
-        .navigationTitle("Conversations")
-        .toolbar {
-            ToolbarItem(placement: .automatic) {
-                Button(action: createConversation) {
-                    Image(systemName: "plus")
+        NavigationStack(path: $navigationPath) {
+            Group {
+                if conversations.isEmpty {
+                    emptyState
+                } else {
+                    conversationList
                 }
             }
-        }
-        .navigationDestination(for: UUID.self) { id in
-            if let conversation = conversations.first(where: { $0.id == id }) {
-                ChatView(conversation: conversation)
+            .navigationTitle("Conversations")
+            .toolbar {
+                ToolbarItem(placement: .automatic) {
+                    Button(action: createConversation) {
+                        Image(systemName: "plus")
+                    }
+                }
+            }
+            .navigationDestination(for: UUID.self) { id in
+                if let conversation = conversations.first(where: { $0.id == id }) {
+                    ChatView(conversation: conversation)
+                }
             }
         }
     }
@@ -63,7 +66,7 @@ struct ConversationListView: View {
             modelID: serviceProvider.currentModel.id
         )
         try? repo.save()
-        router.selectedConversationID = conversation.id
+        navigationPath.append(conversation.id)
     }
 
     private func deleteConversations(at offsets: IndexSet) {

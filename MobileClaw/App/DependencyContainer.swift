@@ -18,11 +18,18 @@ final class LLMServiceProvider {
     var currentProvider: LLMProvider = .anthropic
     var currentModel: LLMModel = .claudeSonnet
 
+    private var cachedServices: [LLMProvider: any LLMService] = [:]
+
     func service() -> any LLMService {
-        LLMServiceFactory.service(for: currentProvider)
+        service(for: currentProvider)
     }
 
     func service(for provider: LLMProvider) -> any LLMService {
-        LLMServiceFactory.service(for: provider)
+        if let existing = cachedServices[provider] {
+            return existing
+        }
+        let svc = LLMServiceFactory.service(for: provider)
+        cachedServices[provider] = svc
+        return svc
     }
 }

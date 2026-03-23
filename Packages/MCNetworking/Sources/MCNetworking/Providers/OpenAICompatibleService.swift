@@ -4,7 +4,13 @@ import MCCore
 public final class OpenAICompatibleService: LLMService, @unchecked Sendable {
     public let provider: LLMProvider
     private let apiKeyStore: APIKeyStore
-    private var currentTask: Task<Void, Never>?
+    private let lock = NSLock()
+    private var _currentTask: Task<Void, Never>?
+
+    private var currentTask: Task<Void, Never>? {
+        get { lock.withLock { _currentTask } }
+        set { lock.withLock { _currentTask = newValue } }
+    }
 
     public init(provider: LLMProvider, apiKeyStore: APIKeyStore = .shared) {
         precondition(provider.isOpenAICompatible, "\(provider) is not OpenAI-compatible")
@@ -33,9 +39,8 @@ public final class OpenAICompatibleService: LLMService, @unchecked Sendable {
             case .contentBlockDelta(_, let delta):
                 if case .text(let text) = delta { fullText += text }
                 if case .toolInput(let json) = delta {
-                    if var last = toolCalls.last {
-                        last.args += json
-                        toolCalls[toolCalls.count - 1] = last
+                    if !toolCalls.isEmpty {
+                        toolCalls[toolCalls.count - 1].args += json
                     }
                 }
             case .contentBlockStart(_, let type):
@@ -65,11 +70,11 @@ public final class OpenAICompatibleService: LLMService, @unchecked Sendable {
         AsyncThrowingStream { continuation in
             let task = Task {
                 do {
-                    guard let apiKey = apiKeyStore.apiKey(for: provider) else {
-                        throw MCError.apiKeyMissing(provider)
+                    guard let apiKey = self.apiKeyStore.apiKey(for: self.provider) else {
+                        throw MCError.apiKeyMissing(self.provider)
                     }
 
-                    let request = try buildRequest(
+                    let request = try self.buildRequest(
                         messages: messages,
                         model: model,
                         systemPrompt: systemPrompt,
@@ -78,14 +83,13 @@ public final class OpenAICompatibleService: LLMService, @unchecked Sendable {
                         apiKey: apiKey
                     )
 
-                    let sseClient = SSEClient()
-                    for try await sseEvent in await sseClient.stream(request: request) {
+                    for try await sseEvent in SSEClientFactory.stream(request: request) {
                         if Task.isCancelled { break }
                         if sseEvent.data == "[DONE]" {
                             continuation.yield(.messageStop(stopReason: .endTurn))
                             break
                         }
-                        let events = parseSSEEvent(sseEvent)
+                        let events = self.parseSSEEvent(sseEvent)
                         for event in events {
                             continuation.yield(event)
                         }
@@ -95,6 +99,8 @@ public final class OpenAICompatibleService: LLMService, @unchecked Sendable {
                     continuation.finish(throwing: error)
                 }
             }
+
+            self.currentTask = task
             continuation.onTermination = { _ in task.cancel() }
         }
     }
@@ -131,9 +137,11 @@ public final class OpenAICompatibleService: LLMService, @unchecked Sendable {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        request.timeoutInterval = 120
 
         var openAIMessages: [[String: Any]] = []
 
+        // Add system prompt (only once - skip .system role messages if systemPrompt provided)
         if let systemPrompt, !systemPrompt.isEmpty {
             openAIMessages.append(["role": "system", "content": systemPrompt])
         }
@@ -141,7 +149,10 @@ public final class OpenAICompatibleService: LLMService, @unchecked Sendable {
         for msg in messages {
             switch msg.role {
             case .system:
-                openAIMessages.append(["role": "system", "content": msg.textContent])
+                // Only add system messages from the array if no explicit systemPrompt was provided
+                if systemPrompt == nil || systemPrompt?.isEmpty == true {
+                    openAIMessages.append(["role": "system", "content": msg.textContent])
+                }
             case .user:
                 // Handle tool results from user role
                 if msg.content.contains(where: { if case .toolResult = $0 { return true }; return false }) {
@@ -217,12 +228,10 @@ public final class OpenAICompatibleService: LLMService, @unchecked Sendable {
             let delta = choice["delta"] as? [String: Any] ?? [:]
             let finishReason = choice["finish_reason"] as? String
 
-            // Text content
             if let content = delta["content"] as? String, !content.isEmpty {
                 events.append(.contentBlockDelta(index: 0, delta: .text(content)))
             }
 
-            // Tool calls
             if let toolCalls = delta["tool_calls"] as? [[String: Any]] {
                 for tc in toolCalls {
                     let index = tc["index"] as? Int ?? 0
@@ -238,14 +247,12 @@ public final class OpenAICompatibleService: LLMService, @unchecked Sendable {
                 }
             }
 
-            // Finish reason
             if let reason = finishReason {
                 let stopReason: StreamEvent.StopReason = reason == "tool_calls" ? .toolUse : .endTurn
                 events.append(.messageStop(stopReason: stopReason))
             }
         }
 
-        // Usage
         if let usage = json["usage"] as? [String: Any] {
             events.append(.usage(
                 inputTokens: usage["prompt_tokens"] as? Int,

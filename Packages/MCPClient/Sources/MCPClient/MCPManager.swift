@@ -12,7 +12,7 @@ public final class MCPManager: @unchecked Sendable {
         []
     }
 
-    public func callTool(name: String, arguments: [String: Any]) async throws -> ToolResult {
+    public func callTool(name: String, argumentsJSON: String) async throws -> ToolResult {
         throw MCError.toolCallFailed(toolName: name, message: "MCP not yet configured")
     }
 }

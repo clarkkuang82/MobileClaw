@@ -47,7 +47,8 @@ public final class ConversationRepository {
         modelID: String? = nil
     ) throws -> MessageEntity {
         let data = try JSONEncoder().encode(content)
-        let message = MessageEntity(role: role, contentJSON: data, modelID: modelID)
+        let jsonString = String(data: data, encoding: .utf8)
+        let message = MessageEntity(role: role, contentJSON: jsonString, modelID: modelID)
         message.conversation = conversation
         modelContext.insert(message)
         conversation.updatedAt = Date()

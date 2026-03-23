@@ -16,9 +16,7 @@ struct AppSidebarView: View {
         } detail: {
             switch router.selectedTab {
             case .chat:
-                NavigationStack {
-                    ConversationListView(router: router)
-                }
+                ConversationListView(router: router)
             case .agents:
                 AgentPlaceholderView()
             case .tools:

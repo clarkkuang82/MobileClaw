@@ -5,7 +5,7 @@ public protocol MCPClientProtocol: Sendable {
     func disconnect() async throws
 
     func listTools() async throws -> [ToolDefinition]
-    func callTool(name: String, arguments: [String: Any]) async throws -> ToolResult
+    func callTool(name: String, argumentsJSON: String) async throws -> ToolResult
 
     var isConnected: Bool { get }
     var serverName: String { get }

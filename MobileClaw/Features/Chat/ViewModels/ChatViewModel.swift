@@ -9,6 +9,7 @@ import MCPersistence
 final class ChatViewModel {
     var messages: [ChatMessage] = []
     var streamingText: String = ""
+    var thinkingText: String = ""
     var isStreaming: Bool = false
     var error: MCError?
 
@@ -40,7 +41,8 @@ final class ChatViewModel {
         guard let conversation else { return }
         let entities = conversation.sortedMessages
         messages = entities.compactMap { entity -> ChatMessage? in
-            guard let data = entity.contentJSON,
+            guard let jsonString = entity.contentJSON,
+                  let data = jsonString.data(using: .utf8),
                   let content = try? JSONDecoder().decode([ContentBlock].self, from: data) else {
                 return nil
             }
@@ -84,6 +86,7 @@ final class ChatViewModel {
 
         isStreaming = true
         streamingText = ""
+        thinkingText = ""
         error = nil
 
         let service = serviceProvider.service()
@@ -117,7 +120,7 @@ final class ChatViewModel {
                         case .toolInput(let json):
                             toolCallArgs += json
                         case .thinking(let text):
-                            streamingText += text
+                            thinkingText += text
                         }
 
                     case .contentBlockStart(_, let type):
@@ -141,13 +144,23 @@ final class ChatViewModel {
                     }
                 }
 
-                if !streamingText.isEmpty {
-                    let assistantMessage = ChatMessage.assistant(streamingText, modelID: model.id)
+                if !streamingText.isEmpty || !self.thinkingText.isEmpty {
+                    var content: [ContentBlock] = []
+                    if !self.thinkingText.isEmpty {
+                        content.append(.thinking(self.thinkingText))
+                    }
+                    if !streamingText.isEmpty {
+                        content.append(.text(streamingText))
+                    }
+                    let assistantMessage = ChatMessage(
+                        role: .assistant, content: content, modelID: model.id
+                    )
                     messages.append(assistantMessage)
                     persistMessage(assistantMessage)
                 }
 
                 streamingText = ""
+                self.thinkingText = ""
                 isStreaming = false
             } catch {
                 if !(error is CancellationError) {

@@ -9,7 +9,13 @@
       "Bash(xcode-select -p)",
       "Read(//Applications/**)",
       "Bash(mdfind \"kMDItemCFBundleIdentifier == ''com.apple.dt.Xcode''\")",
-      "Bash(DEVELOPER_DIR=/Users/clarkkuang/Downloads/Xcode.app/Contents/Developer xcodebuild test -project MobileClaw.xcodeproj -scheme MobileClawTests-macOS -destination 'platform=macOS,arch=arm64' -quiet)"
+      "Bash(DEVELOPER_DIR=/Users/clarkkuang/Downloads/Xcode.app/Contents/Developer xcodebuild test -project MobileClaw.xcodeproj -scheme MobileClawTests-macOS -destination 'platform=macOS,arch=arm64' -quiet)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(DEVELOPER_DIR=/Users/clarkkuang/Downloads/Xcode.app/Contents/Developer xcodebuild build -project MobileClaw.xcodeproj -scheme MobileClaw-macOS -destination 'platform=macOS,arch=arm64')",
+      "Bash(DEVELOPER_DIR=/Users/clarkkuang/Downloads/Xcode.app/Contents/Developer xcodebuild test -project MobileClaw.xcodeproj -scheme MobileClawTests-macOS -destination 'platform=macOS,arch=arm64')",
+      "Bash(rm -f \"/Users/clarkkuang/Library/Containers/com.clarkkuang82.MobileClaw/Data/Library/Application Support/MobileClaw.store\"*)",
+      "Bash(rm -rf \"/Users/clarkkuang/Library/Containers/com.clarkkuang82.MobileClaw\")"
     ]
   }
 }

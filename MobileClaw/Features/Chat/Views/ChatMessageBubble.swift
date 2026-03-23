@@ -6,6 +6,10 @@ struct ChatMessageBubble: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
+            if message.role == .user {
+                Spacer(minLength: 40)
+            }
+
             if message.role == .assistant {
                 avatar
             }
@@ -20,10 +24,6 @@ struct ChatMessageBubble: View {
                         .font(.caption2)
                         .foregroundStyle(.tertiary)
                 }
-            }
-
-            if message.role == .user {
-                Spacer(minLength: 40)
             }
 
             if message.role == .assistant {

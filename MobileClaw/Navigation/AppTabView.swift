@@ -5,9 +5,7 @@ struct AppTabView: View {
 
     var body: some View {
         TabView(selection: $router.selectedTab) {
-            NavigationStack {
-                ConversationListView(router: router)
-            }
+            ConversationListView(router: router)
             .tabItem {
                 Label(NavigationRouter.Tab.chat.title, systemImage: NavigationRouter.Tab.chat.icon)
             }

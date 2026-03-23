@@ -1,30 +1,5 @@
 import Foundation
-
-public actor SSEClient {
-    private var task: URLSessionDataTask?
-    private var urlSession: URLSession
-
-    public init(urlSession: URLSession = .shared) {
-        self.urlSession = urlSession
-    }
-
-    public func stream(request: URLRequest) -> AsyncThrowingStream<SSEEvent, Error> {
-        AsyncThrowingStream { continuation in
-            let delegate = SSEStreamDelegate(continuation: continuation)
-            let session = URLSession(configuration: .default, delegate: delegate, delegateQueue: nil)
-            let task = session.dataTask(with: request)
-            continuation.onTermination = { _ in
-                task.cancel()
-                session.invalidateAndCancel()
-            }
-            task.resume()
-        }
-    }
-
-    public func cancel() {
-        task?.cancel()
-    }
-}
+import MCCore
 
 public struct SSEEvent: Sendable {
     public let event: String?
@@ -38,17 +13,37 @@ public struct SSEEvent: Sendable {
     }
 }
 
-final class SSEStreamDelegate: NSObject, URLSessionDataDelegate, Sendable {
-    private let continuation: AsyncThrowingStream<SSEEvent, Error>.Continuation
-    private let buffer = SSEBuffer()
+public enum SSEClientFactory {
+    public static func stream(request: URLRequest) -> AsyncThrowingStream<SSEEvent, Error> {
+        AsyncThrowingStream { continuation in
+            let buffer = SSEBuffer()
+            let delegate = SSEStreamDelegate(continuation: continuation, buffer: buffer)
+            let session = URLSession(configuration: .default, delegate: delegate, delegateQueue: nil)
+            let task = session.dataTask(with: request)
+            continuation.onTermination = { _ in
+                task.cancel()
+                session.invalidateAndCancel()
+            }
+            task.resume()
+        }
+    }
+}
 
-    init(continuation: AsyncThrowingStream<SSEEvent, Error>.Continuation) {
+final class SSEStreamDelegate: NSObject, URLSessionDataDelegate, @unchecked Sendable {
+    private let continuation: AsyncThrowingStream<SSEEvent, Error>.Continuation
+    private let buffer: SSEBuffer
+    private let lock = NSLock()
+
+    init(continuation: AsyncThrowingStream<SSEEvent, Error>.Continuation, buffer: SSEBuffer) {
         self.continuation = continuation
+        self.buffer = buffer
     }
 
     func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
         guard let text = String(data: data, encoding: .utf8) else { return }
+        lock.lock()
         let events = buffer.append(text)
+        lock.unlock()
         for event in events {
             continuation.yield(event)
         }
@@ -84,9 +79,8 @@ final class SSEStreamDelegate: NSObject, URLSessionDataDelegate, Sendable {
     }
 }
 
-import MCCore
-
-final class SSEBuffer: @unchecked Sendable {
+// SSEBuffer is only accessed under the delegate's lock - not Sendable itself
+final class SSEBuffer {
     private var buffer = ""
     private var currentEvent: String?
     private var currentData: [String] = []
