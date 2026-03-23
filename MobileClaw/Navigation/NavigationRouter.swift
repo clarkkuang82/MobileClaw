@@ -10,6 +10,7 @@ final class NavigationRouter {
         case chat
         case agents
         case tools
+        case documents
         case settings
 
         var id: String { rawValue }
@@ -19,6 +20,7 @@ final class NavigationRouter {
             case .chat: "Chat"
             case .agents: "Agents"
             case .tools: "Tools"
+            case .documents: "Docs"
             case .settings: "Settings"
             }
         }
@@ -28,6 +30,7 @@ final class NavigationRouter {
             case .chat: "bubble.left.and.bubble.right"
             case .agents: "person.3"
             case .tools: "wrench.and.screwdriver"
+            case .documents: "doc.on.doc"
             case .settings: "gearshape"
             }
         }

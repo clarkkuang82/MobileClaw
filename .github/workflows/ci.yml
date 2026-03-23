@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode Project
+        run: xcodegen generate
+
+      - name: Build macOS
+        run: |
+          xcodebuild build \
+            -project MobileClaw.xcodeproj \
+            -scheme MobileClaw-macOS \
+            -destination 'platform=macOS' \
+            -quiet
+
+      - name: Test macOS
+        run: |
+          xcodebuild test \
+            -project MobileClaw.xcodeproj \
+            -scheme MobileClawTests-macOS \
+            -destination 'platform=macOS' \
+            -quiet
+
+      - name: Build iOS
+        run: |
+          xcodebuild build \
+            -project MobileClaw.xcodeproj \
+            -scheme MobileClaw-iOS \
+            -destination 'platform=iOS Simulator,name=iPhone 16' \
+            -quiet

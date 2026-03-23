@@ -28,6 +28,10 @@ struct AppSidebarView: View {
                 NavigationStack {
                     MCPToolListView()
                 }
+            case .documents:
+                NavigationStack {
+                    DocumentBrowserView()
+                }
             case .settings:
                 SettingsView()
             }

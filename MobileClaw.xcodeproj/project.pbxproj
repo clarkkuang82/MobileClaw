@@ -21,6 +21,8 @@
 		44FCA9EC84BF8498E71A5CC9 /* MobileClawTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 691803EDAC0F77B8743C0DFC /* MobileClawTests.swift */; };
 		4B643DD42C2375285E17DF0E /* AppTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB5BDD4B61A39A42677EE531 /* AppTabView.swift */; };
 		4FEC60C7EF00D35910C75EA2 /* MCAgents in Frameworks */ = {isa = PBXBuildFile; productRef = EDA6D0415CA909665621AA10 /* MCAgents */; };
+		525350BA05EC805317666023 /* DocumentBrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D3082949D5A084AEFAE68AB /* DocumentBrowserView.swift */; };
+		52535DC87DB6E3E2454EAD25 /* PluginListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BC2F5CDBA205ABAF357F97C /* PluginListView.swift */; };
 		54960167D4A3BE3097C1DE4F /* DependencyContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5C0123BFE0B8F31E19B2DFA /* DependencyContainer.swift */; };
 		58AF362B20236CB0B0D202AB /* ConversationRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B6D92E5680AEC8E908BD170 /* ConversationRowView.swift */; };
 		5D76CA008885ADC7C64627AC /* MCCore in Frameworks */ = {isa = PBXBuildFile; productRef = D381AC1EF43ACE419E2BFF93 /* MCCore */; };
@@ -37,6 +39,7 @@
 		744E3BDBDFDD5948456359B8 /* ChatMessageBubble.swift in Sources */ = {isa = PBXBuildFile; fileRef = 407F87DE98EEDFC9902F6006 /* ChatMessageBubble.swift */; };
 		813C6A373F54F17E555F18FB /* ChatViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A70A9DD813238B1B573C0105 /* ChatViewModel.swift */; };
 		84C13815D474801052BA5A8F /* MCNetworking in Frameworks */ = {isa = PBXBuildFile; productRef = B147F2D7062F221F930145E6 /* MCNetworking */; };
+		874C1E89A3CC18ADD802EEE3 /* DocumentBrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D3082949D5A084AEFAE68AB /* DocumentBrowserView.swift */; };
 		8C0D02844543C9FB3556328A /* MCPersistence in Frameworks */ = {isa = PBXBuildFile; productRef = C034C110DB688C83CD1117AA /* MCPersistence */; };
 		8F4251341D3D3571FA603C86 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 309416E1A20F4440407E44CF /* ContentView.swift */; };
 		916C614DF4FB8AA8E22A7D2E /* AgentListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F8DFCBE555BEF4980368215 /* AgentListView.swift */; };
@@ -53,6 +56,7 @@
 		B22A66D1584CBB67AE1E806F /* MCPersistence in Frameworks */ = {isa = PBXBuildFile; productRef = 2B219AA3929A9EAE22D29C0A /* MCPersistence */; };
 		B5C35F983D9A142FD73A78DF /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94D55263F092B6A829FBF9AF /* SettingsView.swift */; };
 		BB45E02EC4ECA60336C89FC5 /* MCAgents in Frameworks */ = {isa = PBXBuildFile; productRef = F48E2D80CDC15084A5B9D9BB /* MCAgents */; };
+		C733FBCE562C3836A9674EF7 /* PluginListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BC2F5CDBA205ABAF357F97C /* PluginListView.swift */; };
 		D41A4D283654279E79535CB3 /* MCPersistence in Frameworks */ = {isa = PBXBuildFile; productRef = B9699418B94A587FE8E68F1F /* MCPersistence */; };
 		DFA28153A1A016930FAC6886 /* MobileClawApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = C98C26439C6001665E1D8151 /* MobileClawApp.swift */; };
 		E4CBA7DE564C0677321FA46F /* MCPersistence in Frameworks */ = {isa = PBXBuildFile; productRef = A5296CA4C57DC6DC13758053 /* MCPersistence */; };
@@ -85,6 +89,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		1D3082949D5A084AEFAE68AB /* DocumentBrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocumentBrowserView.swift; sourceTree = "<group>"; };
 		1E36B95CADA1B53C48CEF07C /* AgentOrchestrationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentOrchestrationView.swift; sourceTree = "<group>"; };
 		1F8FA91AD213A787B89A08AA /* MobileClawTests-macOS.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "MobileClawTests-macOS.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		28B3CE2BB0DA5BF867A2D8AD /* MCNetworking */ = {isa = PBXFileReference; lastKnownFileType = folder; name = MCNetworking; path = Packages/MCNetworking; sourceTree = SOURCE_ROOT; };
@@ -95,6 +100,7 @@
 		37ED1872CCF558A9978EC4CB /* MobileClaw-iOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = "MobileClaw-iOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		3F16AD8E21D77D49BA9712BC /* MobileClaw.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MobileClaw.entitlements; sourceTree = "<group>"; };
 		407F87DE98EEDFC9902F6006 /* ChatMessageBubble.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatMessageBubble.swift; sourceTree = "<group>"; };
+		4BC2F5CDBA205ABAF357F97C /* PluginListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PluginListView.swift; sourceTree = "<group>"; };
 		5B6D92E5680AEC8E908BD170 /* ConversationRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationRowView.swift; sourceTree = "<group>"; };
 		5F420BDA2148707AF2472BD7 /* MCPClient */ = {isa = PBXFileReference; lastKnownFileType = folder; name = MCPClient; path = Packages/MCPClient; sourceTree = SOURCE_ROOT; };
 		691803EDAC0F77B8743C0DFC /* MobileClawTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MobileClawTests.swift; sourceTree = "<group>"; };
@@ -271,6 +277,7 @@
 		4A8A077DA0F83098ABA9BBEC /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				1D3082949D5A084AEFAE68AB /* DocumentBrowserView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -304,6 +311,7 @@
 		59F1DB79A48215828FE4B130 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				4BC2F5CDBA205ABAF357F97C /* PluginListView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -665,10 +673,12 @@
 				084A0E4A23CD77F2F91CDA24 /* ConversationListView.swift in Sources */,
 				58AF362B20236CB0B0D202AB /* ConversationRowView.swift in Sources */,
 				54960167D4A3BE3097C1DE4F /* DependencyContainer.swift in Sources */,
+				874C1E89A3CC18ADD802EEE3 /* DocumentBrowserView.swift in Sources */,
 				6B1D77CBEA9092AA3AA6188C /* MCPServerConfigView.swift in Sources */,
 				6B85D482D5D6A1B378CECC17 /* MCPToolListView.swift in Sources */,
 				AB4A78AD0E699ADAF6DBA1FA /* MobileClawApp.swift in Sources */,
 				5E6E67D263A2DE87D190833D /* NavigationRouter.swift in Sources */,
+				C733FBCE562C3836A9674EF7 /* PluginListView.swift in Sources */,
 				B5C35F983D9A142FD73A78DF /* SettingsView.swift in Sources */,
 				17AC1222D73E9DF84335AE57 /* StreamingMessageView.swift in Sources */,
 			);
@@ -690,10 +700,12 @@
 				63982EBF676BCA562759D8E1 /* ConversationListView.swift in Sources */,
 				6542BD88947CD9064237F085 /* ConversationRowView.swift in Sources */,
 				9A0BA05F35BA2286E1E8088C /* DependencyContainer.swift in Sources */,
+				525350BA05EC805317666023 /* DocumentBrowserView.swift in Sources */,
 				A924B6FA973C58E3C3EAA6E6 /* MCPServerConfigView.swift in Sources */,
 				AA78D3A584D14E247C3A8F43 /* MCPToolListView.swift in Sources */,
 				DFA28153A1A016930FAC6886 /* MobileClawApp.swift in Sources */,
 				6E16602217E7E466BB25E0D3 /* NavigationRouter.swift in Sources */,
+				52535DC87DB6E3E2454EAD25 /* PluginListView.swift in Sources */,
 				FDB5A5EFDA478444A02CD9D1 /* SettingsView.swift in Sources */,
 				A65E54A79A67EEC345CF3526 /* StreamingMessageView.swift in Sources */,
 			);

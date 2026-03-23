@@ -31,6 +31,14 @@ struct AppTabView: View {
             .tag(NavigationRouter.Tab.tools)
 
             NavigationStack {
+                DocumentBrowserView()
+            }
+            .tabItem {
+                Label(NavigationRouter.Tab.documents.title, systemImage: NavigationRouter.Tab.documents.icon)
+            }
+            .tag(NavigationRouter.Tab.documents)
+
+            NavigationStack {
                 SettingsView()
             }
             .tabItem {
