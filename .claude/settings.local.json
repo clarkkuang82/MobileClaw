@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(gh repo:*)",
+      "Bash(xcodebuild -version)",
+      "Bash(xcodegen generate:*)",
+      "Bash(xcodebuild build:*)",
+      "Bash(sudo xcode-select:*)",
+      "Bash(xcode-select -p)",
+      "Read(//Applications/**)",
+      "Bash(mdfind \"kMDItemCFBundleIdentifier == ''com.apple.dt.Xcode''\")",
+      "Bash(DEVELOPER_DIR=/Users/clarkkuang/Downloads/Xcode.app/Contents/Developer xcodebuild test -project MobileClaw.xcodeproj -scheme MobileClawTests-macOS -destination 'platform=macOS,arch=arm64' -quiet)"
+    ]
+  }
+}
