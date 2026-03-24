@@ -16,7 +16,11 @@
       "Bash(DEVELOPER_DIR=/Users/clarkkuang/Downloads/Xcode.app/Contents/Developer xcodebuild test -project MobileClaw.xcodeproj -scheme MobileClawTests-macOS -destination 'platform=macOS,arch=arm64')",
       "Bash(rm -f \"/Users/clarkkuang/Library/Containers/com.clarkkuang82.MobileClaw/Data/Library/Application Support/MobileClaw.store\"*)",
       "Bash(rm -rf \"/Users/clarkkuang/Library/Containers/com.clarkkuang82.MobileClaw\")",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(gh run:*)",
+      "Bash(open /Users/clarkkuang/MobileClaw/MobileClaw.xcodeproj)",
+      "Bash(DEVELOPER_DIR=/Users/clarkkuang/Downloads/Xcode.app/Contents/Developer xcodebuild build -project MobileClaw.xcodeproj -scheme MobileClaw-iOS -destination 'platform=iOS Simulator,name=iPhone 16' -quiet)",
+      "Bash(DEVELOPER_DIR=/Users/clarkkuang/Downloads/Xcode.app/Contents/Developer xcodebuild build -project MobileClaw.xcodeproj -scheme MobileClaw-iOS -destination 'generic/platform=iOS Simulator' -quiet)"
     ]
   }
 }

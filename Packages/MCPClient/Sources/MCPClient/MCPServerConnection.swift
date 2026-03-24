@@ -7,7 +7,9 @@ public actor MCPServerConnection {
     public let config: MCPServerConfig
     private(set) public var isConnected: Bool = false
     private(set) public var discoveredTools: [ToolDefinition] = []
+    #if os(macOS)
     private var process: Process?
+    #endif
     private var inputPipe: Pipe?
     private var outputPipe: Pipe?
     private var pendingRequests: [String: CheckedContinuation<Any, Error>] = [:]

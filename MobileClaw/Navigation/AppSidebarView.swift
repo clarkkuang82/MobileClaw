@@ -1,5 +1,6 @@
 import SwiftUI
 
+#if os(macOS)
 struct AppSidebarView: View {
     @Bindable var router: NavigationRouter
 
@@ -38,3 +39,4 @@ struct AppSidebarView: View {
         }
     }
 }
+#endif
