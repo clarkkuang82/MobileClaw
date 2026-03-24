@@ -12,8 +12,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Select Xcode 16.2
-        run: sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer
+      - name: Select Xcode
+        run: |
+          # Use whatever Xcode is default on the runner
+          xcodebuild -version
 
       - name: Install XcodeGen
         run: brew install xcodegen
@@ -37,10 +39,11 @@ jobs:
             -destination 'platform=macOS' \
             -quiet
 
-      - name: Build iOS
+      - name: Build iOS (download SDK + compile)
         run: |
+          xcodebuild -downloadPlatform iOS
           xcodebuild build \
             -project MobileClaw.xcodeproj \
             -scheme MobileClaw-iOS \
-            -destination 'platform=iOS Simulator,name=iPhone 16' \
+            -destination 'generic/platform=iOS Simulator' \
             -quiet
